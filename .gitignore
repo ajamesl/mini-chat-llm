@@ -1,0 +1,5 @@
+/checkpoints/sft_model/*
+/checkpoints/ppo_model/*
+
+/checkpoints/sft_model/.gitkeep
+/checkpoints/ppo_model/.gitkeep
