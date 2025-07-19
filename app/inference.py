@@ -2,7 +2,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # Update the MODEL_PATH to reflect the relative folder from the project root
-MODEL_PATH = "checkpoints/merged"
+MODEL_PATH = "checkpoints/sft_model"
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, trust_remote_code=True)
