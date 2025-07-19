@@ -21,10 +21,10 @@ from trl.trainer.utils import SIMPLE_CHAT_TEMPLATE
 
 # ========= USER CONFIG ===========
 
-sft_model_path = "./checkpoint/sft_model"
+sft_model_path = "./checkpoints/sft_model"
 reward_model_path = "Skywork/Skywork-Reward-V2-Qwen3-0.6B"
 base_model = "Qwen/Qwen3-0.6B-Base" 
-output_dir = "./checkpoint/ppo_model"
+output_dir = "./checkpoints/ppo_model"
 dataset_name = "OpenAssistant/oasst1"
 dataset_split = "train"
 prompt_column = "text"
@@ -71,7 +71,7 @@ ppo_args = PPOConfig(
     eval_strategy="steps",
     eval_steps=1000,           # e.g. every 500 training steps
     save_strategy="steps",   # or "epoch" if you want to save every epoch
-    save_steps=250,          # save every 250 steps, adjust as desired
+    save_steps=500,          # save every 250 steps, adjust as desired
     save_total_limit=3,      # keep last 3 checkpoints (optional)
 )
 
@@ -150,7 +150,7 @@ base_model = AutoModelForCausalLM.from_pretrained(base_model, trust_remote_code=
 final_peft = PeftModel.from_pretrained(base_model, output_dir)
 
 merged = final_peft.merge_and_unload()
-merged.save_pretrained("./qwen-ppo-rlhf-checkpoint/merged", safe_serialization=True)
-tokenizer.save_pretrained("./qwen-ppo-rlhf-checkpoint/merged")
+merged.save_pretrained("./checkpoints/ppo_model", safe_serialization=True)
+tokenizer.save_pretrained("./checkpoints/ppo_model")
 
-print("Merged full model (for direct inference) saved to ./qwen-ppo-rlhf-checkpoint/merged")
+print("Merged full model (for direct inference) saved to ./checkpoints/ppo_model")

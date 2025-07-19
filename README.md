@@ -1,48 +1,39 @@
-# 🎭 Tiny Shakespeare Generator
+# 💬 MiniChat: Multilingual Chat Assistant
 
-A FastAPI web application that generates a short Shakespearean dialogue using a trained transformer model.
-
-## Deployed App
-
-**Try it now:** [http://65.109.84.92:8000/](http://65.109.84.92:8000/)
+A FastAPI web application serving a multilingual chat assistant, powered by a Qwen3 0.6B Base model. The model is first fine-tuned with supervised instruction data (SFT) and then further optimised using Reinforcement Learning from Human Feedback (RLHF) via Proximal Policy Optimization (PPO).
 
 ## Features
 
-- **Modern Web Interface**: Clean, responsive UI with real-time text streaming
-- **Token-by-Token Streaming**: Watch text generate token by token
-- **Configurable Generation**: Control the number of tokens (50-1000)
-- **Pre-trained Model**: Uses a transformer model trained from scratch on Shakespeare's works
+- **Multilingual Chat**: Supports conversational AI in multiple languages
+- **Modern Web Interface**: Clean, responsive UI with real-time streaming
+- **Token-by-Token Streaming**: Watch responses generate live
+- **Advanced Model**: Qwen3 0.6B Base, SFT + RLHF PPO
 - **Docker Support**: Easy deployment with Docker and Docker Compose
 - **FastAPI Backend**: RESTful API with automatic documentation
 
 ## Project Structure
 
 ```
-tiny-shakespeare-generator/
-├── src/                    # Source code package
+mini-chat-llm/
+├── src/                    # Training scripts and utilities
 │   ├── __init__.py
-│   ├── config.py          # Model configuration
-│   ├── model.py           # Transformer model architecture
-│   ├── train.py           # Training script
-│   └── utils.py           # Utility functions
+│   ├── sft_train.py        # Supervised fine-tuning (SFT) script
+│   └── ppo_train.py        # RLHF PPO training script
 ├── app/                   # FastAPI application
 │   ├── __init__.py
-│   ├── main.py           # FastAPI app and routes
-│   └── inference.py      # Text generation functions
-├── data/                  # Training data
-│   └── input.txt         # Shakespeare text corpus
+│   ├── main.py             # FastAPI app and routes
+│   └── inference.py        # Model loading and text generation
+│   └── static/
+│       └── index.html      # Web UI
 ├── checkpoints/           # Model checkpoints
-│   └── tiny_shakespeare.pt # Trained model
-├── templates/             # HTML templates
-│   └── index.html        # Modern web interface
-├── static/               # Static files (CSS, JS, images)
-├── Dockerfile            # Docker configuration
-├── docker-compose.yml    # Docker Compose setup
-├── .dockerignore         # Docker ignore rules
-├── pyproject.toml        # Python project configuration
-├── uv.lock              # Dependency lock file
-├── requirements.txt      # Python dependencies
-└── README.md            # This file
+│   ├── sft_model/         # SFT checkpoint files and final model
+│   ├── ppo_model/         # PPO checkpoint files and final model
+├── Dockerfile             # Docker configuration
+├── docker-compose.yml     # Docker Compose setup
+├── pyproject.toml         # Python project configuration
+├── requirements.txt       # Python dependencies
+├── uv.lock                # Dependency lock file
+└── README.md              # This file
 ```
 
 ## 🛠️ Installation
@@ -51,10 +42,9 @@ tiny-shakespeare-generator/
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/ajamesl/tiny-shakespeare-generator.git
-   cd tiny-shakespeare-generator
+   git clone <your-repo-url>
+   cd mini-chat-llm
    ```
-
 2. **Build and run with Docker Compose**:
    ```bash
    docker-compose up --build
@@ -64,20 +54,17 @@ tiny-shakespeare-generator/
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/ajamesl/tiny-shakespeare-generator.git
-   cd tiny-shakespeare-generator
+   git clone <your-repo-url>
+   cd mini-chat-llm
    ```
-
 2. **Install uv** (if not already installed):
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
-
 3. **Install dependencies**:
    ```bash
    uv sync
    ```
-
 4. **Run the application**:
    ```bash
    uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -87,21 +74,18 @@ tiny-shakespeare-generator/
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/ajamesl/tiny-shakespeare-generator.git
-   cd tiny-shakespeare-generator
+   git clone <your-repo-url>
+   cd mini-chat-llm
    ```
-
 2. **Create virtual environment**:
    ```bash
    python -m venv .venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
-
 3. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
-
 4. **Run the application**:
    ```bash
    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -115,56 +99,46 @@ tiny-shakespeare-generator/
    ```bash
    docker-compose up
    ```
-
 2. **Open your browser** and navigate to `http://localhost:8000`
-
-3. **Generate dialogue**:
-   - Set the number of tokens to generate (50-1000, default: 500)
-   - Click "Generate Dialogue" to see the results stream in real-time
+3. **Chat with the assistant**: Enter your prompt and receive multilingual responses in real time.
 
 ### API Usage
 
-#### Generate Dialogue with Streaming (POST)
+#### Chat Endpoint (POST)
 ```bash
-curl -X POST "http://localhost:8000/generate/" \
-     -H "Content-Type: application/x-www-form-urlencoded" \
-     -d "max_tokens=1000"
+curl -X POST "http://localhost:8000/chat" \
+     -H "Content-Type: application/json" \
+     -d '{"prompt": "Hello!"}'
 ```
-
-This endpoint returns a streaming response where each character is sent as it's generated in real-time using Server-Sent Events (SSE).
+This endpoint returns a streaming response with the assistant's reply, token by token.
 
 #### Health Check
-```bash
-curl "http://localhost:8000/health"
-```
+(If implemented, add details here)
 
-## Model Architecture
+## Model Architecture & Training
 
-The model uses a transformer architecture with:
-- **Embedding Dimension**: 384
-- **Attention Heads**: 6
-- **Layers**: 6
-- **Context Length**: 256 tokens
-- **Dropout**: 0.2
+- **Base Model**: Qwen3 0.6B (multilingual, open weights)
+- **Supervised Fine-Tuning (SFT)**: Trained on instruction-following data (e.g., OpenAssistant/oasst1)
+- **RLHF PPO**: Further optimized using human feedback and Proximal Policy Optimization (PPO) with a reward model
+- **Adapters**: LoRA adapters used for efficient fine-tuning
+- **Final Model**: Merged for direct inference
 
-## Configuration
+### Training Pipeline
 
-Modify `src/config.py` to adjust:
-- Model hyperparameters
-- Training settings
-- Device selection (CPU/GPU/MPS)
+1. **Supervised Fine-Tuning (SFT)**
+   - Script: `src/sft_train.py`
+   - Data: Instruction-response pairs (e.g., OpenAssistant/oasst1)
+   - LoRA adapters applied for parameter-efficient training
+   - Model checkpoint saved to `checkpoints/sft_model/`
 
-## Training
+2. **RLHF with PPO**
+   - Script: `src/ppo_train.py`
+   - Reward model: e.g., Skywork/Skywork-Reward-V2-Qwen3-0.6B
+   - PPO optimization using TRL library
+   - Model checkpoint saved to `checkpoints/ppo_model/`
 
-To train your own model:
-
-1. **Prepare your data**: Place text data in `data/input.txt`
-2. **Run training**: 
-   ```bash
-   uv run python src/train.py
-   ```
-3. **Monitor progress**: Training logs will show loss progression
-4. **Model saved**: Final model saved to `checkpoints/tiny_shakespeare.pt`
+3. **Merging for Inference**
+   - Final model merged and saved to `checkpoints/ppo_model/` for direct loading by the FastAPI app
 
 ## Deployment
 
@@ -187,7 +161,7 @@ Once running, visit `http://localhost:8000/docs` for interactive API documentati
 ## UI Features
 
 - **Modern Design**: Clean, responsive interface
-- **Real-time Streaming**: Watch text generate token by token
+- **Real-time Streaming**: Watch responses generate token by token
 - **Error Handling**: Graceful error messages and loading states
 - **Responsive Layout**: Works on desktop and mobile devices
 
@@ -212,7 +186,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Acknowledgments
 
-- Based on the transformer architecture (decoder) from "Attention Is All You Need"
-- Trained on Shakespeare's works from Project Gutenberg
-- Inspired by Andrej Karpathy's educational content
+- Qwen3 model by Alibaba
+- RLHF and PPO pipeline inspired by TRL and OpenAssistant
 - Built with FastAPI and modern web technologies

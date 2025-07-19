@@ -99,7 +99,7 @@ def print_sample_generations(model, tokenizer, n=5):
 
 # Hyperparameters and output settings
 device = "cuda" if torch.cuda.is_available() else "cpu"
-output_dir = "./qwen-sft-instruct-checkpoint"
+output_dir = "./checkpoints/sft_model/"
 train_batch_size = 4  # reduced due to larger model size
 gradient_accumulation_steps = 4  # helps simulate batch size 16
 learning_rate = 1e-5
@@ -207,7 +207,7 @@ model.save_pretrained(output_dir)
 
 # Option 2 (Optional): Merge LoRA weights into base model for export/inference
 merged_model = model.merge_and_unload()
-merged_model.save_pretrained(f"{output_dir}/merged")
+merged_model.save_pretrained(f"{output_dir}/sft_model")
 
 # Save tokenizer
 tokenizer = AutoTokenizer.from_pretrained(peft_config.base_model_name_or_path, trust_remote_code=True)
