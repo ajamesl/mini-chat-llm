@@ -125,8 +125,6 @@
     </form>
   </div>
   <script>
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    
     const chat = document.getElementById("chat");
     const userInput = document.getElementById("userInput");
     const form = document.getElementById("inputRow");
@@ -190,6 +188,7 @@
       sendBtn.disabled = false;
       isStreaming = false;
     };
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   </script>
 </body>
 </html>
