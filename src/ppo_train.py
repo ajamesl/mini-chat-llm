@@ -32,7 +32,6 @@ def prepare_dataset(dataset: Any, tokenizer: Any) -> Any:
 
 
 def main() -> None:
-    # Model and tokenizer loading
     tokenizer = load_tokenizer(
         PPO_SFT_MODEL_PATH, padding_side="left", trust_remote_code=True
     )
@@ -58,7 +57,6 @@ def main() -> None:
         PPO_REWARD_MODEL_PATH, trust_remote_code=True, num_labels=1
     )
 
-    # Data loading
     dataset = load_dataset(PPO_DATASET_NAME, split=PPO_DATASET_SPLIT)
     train_dataset = dataset.select(range(len(dataset) - PPO_EVAL_SAMPLES))
     eval_dataset = dataset.select(range(len(dataset) - PPO_EVAL_SAMPLES, len(dataset)))
@@ -67,7 +65,6 @@ def main() -> None:
         train_dataset = prepare_dataset(train_dataset, tokenizer)
         eval_dataset = prepare_dataset(eval_dataset, tokenizer)
 
-    # PPO config
     ppo_args = PPOConfig(
         output_dir=PPO_OUTPUT_DIR,
         per_device_train_batch_size=PPO_PER_DEVICE_TRAIN_BATCH_SIZE,

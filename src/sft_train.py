@@ -98,8 +98,6 @@ def print_sample_generations(
 device = "cuda" if torch.cuda.is_available() else "cpu"
 set_seed(SFT_SEED)
 
-# Load model and tokenizer
-
 tokenizer = load_tokenizer(SFT_MODEL_NAME, trust_remote_code=True)
 model = load_causal_lm(SFT_MODEL_NAME, trust_remote_code=True, device=device)
 model.config.pad_token_id = tokenizer.pad_token_id

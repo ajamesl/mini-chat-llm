@@ -1,5 +1,5 @@
 """
-Tiny Shakespeare Generator - A character-level transformer language model.
+mini-chat-llm: Core package for model configuration, loading, and utilities.
 """
 
 from . import config, model, utils
