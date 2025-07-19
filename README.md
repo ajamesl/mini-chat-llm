@@ -17,6 +17,9 @@ A FastAPI web application serving a multilingual chat assistant, powered by a Qw
 mini-chat-llm/
 ├── src/                    # Training scripts and utilities
 │   ├── __init__.py
+│   ├── config.py           # Training configuration and hyperparameters
+│   ├── utils.py            # Shared utility functions (e.g., seed, data prep)
+│   ├── model.py            # Model and tokenizer loading helpers
 │   ├── sft_train.py        # Supervised fine-tuning (SFT) script
 │   └── ppo_train.py        # RLHF PPO training script
 ├── app/                   # FastAPI application
@@ -122,20 +125,35 @@ This endpoint returns a streaming response with the assistant's reply, token by 
 - **RLHF PPO**: Further optimized using human feedback and Proximal Policy Optimization (PPO) with a reward model
 - **Adapters**: LoRA adapters used for efficient fine-tuning
 - **Final Model**: Merged for direct inference
+- **Modular Training Code**: Training logic is now split into `config.py` (hyperparameters), `utils.py` (helpers), `model.py` (model/tokenizer loading), and the main scripts (`sft_train.py`, `ppo_train.py`).
 
 ### Training Pipeline
 
 1. **Supervised Fine-Tuning (SFT)**
    - Script: `src/sft_train.py`
+   - Config: `src/config.py` (edit hyperparameters here)
+   - Utilities: `src/utils.py` (data prep, seeding)
+   - Model loading: `src/model.py`
    - Data: Instruction-response pairs (e.g., OpenAssistant/oasst1)
    - LoRA adapters applied for parameter-efficient training
    - Model checkpoint saved to `checkpoints/sft_model/`
+   - **Run:**
+     ```bash
+     uv run src/sft_train.py
+     ```
 
 2. **RLHF with PPO**
    - Script: `src/ppo_train.py`
+   - Config: `src/config.py` (edit hyperparameters here)
+   - Utilities: `src/utils.py`
+   - Model loading: `src/model.py`
    - Reward model: e.g., Skywork/Skywork-Reward-V2-Qwen3-0.6B
    - PPO optimization using TRL library
    - Model checkpoint saved to `checkpoints/ppo_model/`
+   - **Run:**
+     ```bash
+     uv run src/ppo_train.py
+     ```
 
 3. **Merging for Inference**
    - Final model merged and saved to `checkpoints/ppo_model/` for direct loading by the FastAPI app

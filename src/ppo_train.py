@@ -1,156 +1,125 @@
-import shutil
-import os
-import torch
-import torch.nn as nn
+from typing import Any
+
 from accelerate import PartialState
 from datasets import load_dataset
 from peft import PeftModel
-from transformers import (
-    AutoModelForCausalLM,
-    AutoModelForSequenceClassification,
-    AutoTokenizer,
-)
-from trl import (
-    ModelConfig,
-    PPOConfig,
-    PPOTrainer,
-    get_peft_config,
-)
+from trl import ModelConfig, PPOConfig, PPOTrainer, get_peft_config
 from trl.trainer.utils import SIMPLE_CHAT_TEMPLATE
 
+from config import (PPO_BASE_MODEL, PPO_DATASET_NAME, PPO_DATASET_SPLIT,
+                    PPO_EVAL_SAMPLES, PPO_GRADIENT_ACCUMULATION_STEPS,
+                    PPO_LEARNING_RATE, PPO_NUM_PPO_EPOCHS, PPO_OUTPUT_DIR,
+                    PPO_PER_DEVICE_TRAIN_BATCH_SIZE, PPO_PROMPT_COLUMN,
+                    PPO_REWARD_MODEL_PATH, PPO_SFT_MODEL_PATH,
+                    PPO_TOTAL_EPISODES)
+from model import load_causal_lm, load_sequence_classifier, load_tokenizer
 
-# ========= USER CONFIG ===========
 
-sft_model_path = "./checkpoints/sft_model"
-reward_model_path = "Skywork/Skywork-Reward-V2-Qwen3-0.6B"
-base_model = "Qwen/Qwen3-0.6B-Base" 
-output_dir = "./checkpoints/ppo_model"
-dataset_name = "OpenAssistant/oasst1"
-dataset_split = "train"
-prompt_column = "text"
-eval_samples = 100  # number of eval prompts from the end
-
-# PPO/Trainer params
-per_device_train_batch_size = 1
-gradient_accumulation_steps = 1
-learning_rate = 3e-6
-num_ppo_epochs = 1
-total_episodes = 1500
-
-# ================================
-
-# -- ModelConfig --
-model_args = ModelConfig(
-    model_name_or_path=sft_model_path,
-    trust_remote_code=True,
-    torch_dtype="auto",
-)
-
-# -- PPOConfig --
-ppo_args = PPOConfig(
-    output_dir=output_dir,
-    per_device_train_batch_size=per_device_train_batch_size,
-    gradient_accumulation_steps=gradient_accumulation_steps,
-    learning_rate=learning_rate,
-    total_episodes=total_episodes,
-    num_ppo_epochs=num_ppo_epochs,
-    logging_steps=100,
-    fp16=True,
-    bf16=False,
-    batch_size=1,              # PPO batch size (outer loop)
-    mini_batch_size=1,          # PPO mini batch (for advantage estimation)
-    whiten_rewards=False,       # Most RLHF doesn't whiten
-    kl_coef=0.01,               # Initial KL penalty coefficient
-    cliprange=0.2,
-    vf_coef=0.1,
-    cliprange_value=0.2,
-    gamma=1.0,
-    lam=0.95,
-    temperature=1.0,            # Or 0.7, as you like
-    exp_name="ppo_config",
-    eval_strategy="steps",
-    eval_steps=1000,           # e.g. every 1000 training steps
-    save_strategy="steps",   # or "epoch" if you want to save every epoch
-    save_steps=500,          # save every 250 steps, adjust as desired
-    save_total_limit=3,      # keep last 3 checkpoints (optional)
-)
-
-# ========== MODEL AND TOKENIZER LOADING =========
-
-tokenizer = AutoTokenizer.from_pretrained(
-    sft_model_path, padding_side="left", trust_remote_code=True
-)
-tokenizer.add_special_tokens({"pad_token": "[PAD]"})
-if tokenizer.chat_template is None:
-    tokenizer.chat_template = SIMPLE_CHAT_TEMPLATE
-
-# Policy model (Qwen3 SFT)
-policy = AutoModelForCausalLM.from_pretrained(sft_model_path, trust_remote_code=True)
-
-# Reference policy
-peft_config = get_peft_config(model_args)
-ref_policy = None
-if peft_config is None:
-    ref_policy = AutoModelForCausalLM.from_pretrained(sft_model_path, trust_remote_code=True)
-
-# Reward/Value models (deberta)
-reward_model = AutoModelForSequenceClassification.from_pretrained(
-    reward_model_path, trust_remote_code=True, num_labels=1
-)
-
-value_model = AutoModelForSequenceClassification.from_pretrained(
-    reward_model_path, trust_remote_code=True, num_labels=1
-)
-
-# ========== DATA LOADING ==========
-
-dataset = load_dataset(dataset_name, split=dataset_split)
-train_dataset = dataset.select(range(len(dataset) - eval_samples))
-eval_dataset = dataset.select(range(len(dataset) - eval_samples, len(dataset)))
-
-def prepare_dataset(dataset, tokenizer):
-    def tokenize(element):
+def prepare_dataset(dataset: Any, tokenizer: Any) -> Any:
+    def tokenize(element: dict[str, Any]) -> dict[str, Any]:
         outputs = tokenizer(
-            element[prompt_column],
+            element[PPO_PROMPT_COLUMN],
             padding=False,
         )
         return {"input_ids": outputs["input_ids"]}
+
     return dataset.map(
         tokenize,
         batched=True,
         remove_columns=dataset.column_names,
-        num_proc=1,  # single process is safest, adjust as desired
+        num_proc=1,
     )
 
-with PartialState().local_main_process_first():
-    train_dataset = prepare_dataset(train_dataset, tokenizer)
-    eval_dataset = prepare_dataset(eval_dataset, tokenizer)
 
-# ========== PPO TRAINING ==========
+def main() -> None:
+    # Model and tokenizer loading
+    tokenizer = load_tokenizer(
+        PPO_SFT_MODEL_PATH, padding_side="left", trust_remote_code=True
+    )
+    tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+    if tokenizer.chat_template is None:
+        tokenizer.chat_template = SIMPLE_CHAT_TEMPLATE
 
-trainer = PPOTrainer(
-    args=ppo_args,
-    processing_class=tokenizer,
-    model=policy,
-    ref_model=ref_policy,
-    reward_model=reward_model,
-    value_model=value_model,
-    train_dataset=train_dataset,
-    eval_dataset=eval_dataset,
-    peft_config=peft_config,
-)
+    policy = load_causal_lm(PPO_SFT_MODEL_PATH, trust_remote_code=True)
+    model_args = ModelConfig(
+        model_name_or_path=PPO_SFT_MODEL_PATH,
+        trust_remote_code=True,
+        torch_dtype="auto",
+    )
+    peft_config = get_peft_config(model_args)
+    ref_policy = None
+    if peft_config is None:
+        ref_policy = load_causal_lm(PPO_SFT_MODEL_PATH, trust_remote_code=True)
 
-trainer.train()
+    reward_model = load_sequence_classifier(
+        PPO_REWARD_MODEL_PATH, trust_remote_code=True, num_labels=1
+    )
+    value_model = load_sequence_classifier(
+        PPO_REWARD_MODEL_PATH, trust_remote_code=True, num_labels=1
+    )
 
-trainer.save_model(output_dir)
-trainer.generate_completions()
-print("PPO RLHF Qwen3 training complete! Model saved to:", output_dir)
+    # Data loading
+    dataset = load_dataset(PPO_DATASET_NAME, split=PPO_DATASET_SPLIT)
+    train_dataset = dataset.select(range(len(dataset) - PPO_EVAL_SAMPLES))
+    eval_dataset = dataset.select(range(len(dataset) - PPO_EVAL_SAMPLES, len(dataset)))
 
-base_model = AutoModelForCausalLM.from_pretrained(base_model, trust_remote_code=True)
-final_peft = PeftModel.from_pretrained(base_model, output_dir)
+    with PartialState().local_main_process_first():
+        train_dataset = prepare_dataset(train_dataset, tokenizer)
+        eval_dataset = prepare_dataset(eval_dataset, tokenizer)
 
-merged = final_peft.merge_and_unload()
-merged.save_pretrained("./checkpoints/ppo_model", safe_serialization=True)
-tokenizer.save_pretrained("./checkpoints/ppo_model")
+    # PPO config
+    ppo_args = PPOConfig(
+        output_dir=PPO_OUTPUT_DIR,
+        per_device_train_batch_size=PPO_PER_DEVICE_TRAIN_BATCH_SIZE,
+        gradient_accumulation_steps=PPO_GRADIENT_ACCUMULATION_STEPS,
+        learning_rate=PPO_LEARNING_RATE,
+        total_episodes=PPO_TOTAL_EPISODES,
+        num_ppo_epochs=PPO_NUM_PPO_EPOCHS,
+        logging_steps=100,
+        fp16=True,
+        bf16=False,
+        batch_size=1,
+        mini_batch_size=1,
+        whiten_rewards=False,
+        kl_coef=0.01,
+        cliprange=0.2,
+        vf_coef=0.1,
+        cliprange_value=0.2,
+        gamma=1.0,
+        lam=0.95,
+        temperature=1.0,
+        exp_name="ppo_config",
+        eval_strategy="steps",
+        eval_steps=1000,
+        save_strategy="steps",
+        save_steps=500,
+        save_total_limit=3,
+    )
 
-print("Merged full model (for direct inference) saved to ./checkpoints/ppo_model")
+    trainer = PPOTrainer(
+        args=ppo_args,
+        processing_class=tokenizer,
+        model=policy,
+        ref_model=ref_policy,
+        reward_model=reward_model,
+        value_model=value_model,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        peft_config=peft_config,
+    )
+
+    trainer.train()
+    trainer.save_model(PPO_OUTPUT_DIR)
+    trainer.generate_completions()
+    print("PPO RLHF Qwen3 training complete! Model saved to:", PPO_OUTPUT_DIR)
+
+    base_model = load_causal_lm(PPO_BASE_MODEL, trust_remote_code=True)
+    final_peft = PeftModel.from_pretrained(base_model, PPO_OUTPUT_DIR)
+    merged = final_peft.merge_and_unload()
+    merged.save_pretrained(PPO_OUTPUT_DIR, safe_serialization=True)
+    tokenizer.save_pretrained(PPO_OUTPUT_DIR)
+    print("Merged full model (for direct inference) saved to ./checkpoints/ppo_model")
+
+
+if __name__ == "__main__":
+    main()
