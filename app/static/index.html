@@ -117,7 +117,7 @@
 </head>
 <body>
   <div id="container">
-    <h2>QwenAssistant</h2>
+    <h2>MiniChat</h2>
     <div id="chat"></div>
     <form id="inputRow" autocomplete="off">
       <input id="userInput" placeholder="Ask anything..." autocomplete="off" />
@@ -152,7 +152,7 @@
     observer.observe(chat, { childList: true, subtree: true, characterData: true });
 
     // Initial greeting
-    addMessage("assistant", "Hello! How can I help you today?");
+    addMessage("assistant", "Hey! How can I help you today?");
 
     form.onsubmit = async (e) => {
       e.preventDefault();

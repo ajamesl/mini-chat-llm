@@ -1,4 +1,4 @@
-# 💬 MiniChat: Multilingual Chat Assistant
+# 💬 MiniChat: A Multilingual LLM Assistant
 
 A FastAPI web application serving a multilingual chat assistant, powered by a Qwen3 0.6B Base model. The model is first fine-tuned with supervised instruction data (SFT) and then further optimised using Reinforcement Learning from Human Feedback (RLHF) via Proximal Policy Optimization (PPO).
 
