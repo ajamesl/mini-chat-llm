@@ -125,7 +125,10 @@
     </form>
   </div>
   <script>
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    // Ensure the page starts at the top on initial load
+    window.addEventListener("DOMContentLoaded", () => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    });
     
     const chat = document.getElementById("chat");
     const userInput = document.getElementById("userInput");
