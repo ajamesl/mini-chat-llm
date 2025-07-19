@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>QwenAssistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Google Fonts: Inter & DM Sans -->
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: #161616;
+      font-family: 'Inter', 'DM Sans', system-ui, sans-serif;
+      color: #ececec;
+    }
+    #container {
+      max-width: 480px;
+      margin: 56px auto 0 auto;
+      background: #202123;
+      border-radius: 22px;
+      box-shadow: 0 4px 32px #0004;
+      padding: 2rem 1.5rem 1.3rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      /* min-height: 70vh; <-- removed to allow page scroll */
+      border: 1px solid #23262f;
+    }
+    h2 {
+      text-align: center;
+      font-family: 'DM Sans', 'Inter', system-ui, sans-serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 2rem;
+      letter-spacing: -0.03em;
+      color: #ececec;
+    }
+    #chat {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 220px;
+      margin-bottom: 18px;
+      overflow-y: auto;
+    }
+    .message {
+      padding: 13px 18px;
+      border-radius: 14px;
+      max-width: 86%;
+      font-size: 1.11rem;
+      line-height: 1.7;
+      word-break: break-word;
+      background: #262B35;
+      transition: background 0.2s;
+      box-shadow: 0 1px 4px #0002;
+    }
+    .assistant {
+      background: #23262f;
+      color: #fff;
+      align-self: flex-start;
+    }
+    .user {
+      background: #2563eb;
+      color: #fff;
+      align-self: flex-end;
+    }
+    #inputRow {
+      display: flex;
+      gap: 8px;
+      margin-top: auto;
+      margin-bottom: 6px;
+    }
+    #userInput {
+      flex: 1;
+      padding: 13px 16px;
+      border-radius: 999px;
+      border: none;
+      font-size: 1.05rem;
+      font-family: inherit;
+      outline: none;
+      background: #16171c;
+      color: #ececec;
+      box-shadow: 0 2px 8px #0001 inset;
+      transition: box-shadow 0.2s;
+      border: 1.5px solid #23262f;
+    }
+    #userInput:focus {
+      box-shadow: 0 2px 18px #2563eb22;
+      border: 1.5px solid #2563eb;
+      background: #181a1d;
+    }
+    #sendBtn {
+      padding: 0 24px;
+      border-radius: 999px;
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      font-weight: 600;
+      font-size: 1.07rem;
+      cursor: pointer;
+      transition: background 0.18s;
+      box-shadow: 0 2px 12px #2563eb28;
+      height: 45px;
+    }
+    #sendBtn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    ::placeholder {
+      color: #c3c3cc;
+      opacity: 1;
+      font-size: 1.04rem;
+      font-family: 'Inter', 'DM Sans', system-ui, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h2>QwenAssistant</h2>
+    <div id="chat"></div>
+    <form id="inputRow" autocomplete="off">
+      <input id="userInput" placeholder="Ask anything..." autocomplete="off" />
+      <button id="sendBtn" type="submit">Send</button>
+    </form>
+  </div>
+  <script>
+    const chat = document.getElementById("chat");
+    const userInput = document.getElementById("userInput");
+    const form = document.getElementById("inputRow");
+    const sendBtn = document.getElementById("sendBtn");
+    let isStreaming = false;
+
+    function scrollToBottom(smooth = false) {
+      // Scroll the whole window to the bottom of the page
+      window.scrollTo({ top: document.body.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+    }
+
+    function addMessage(role, content) {
+      const div = document.createElement("div");
+      div.className = "message " + role;
+      div.textContent = content;
+      chat.appendChild(div);
+      scrollToBottom();
+      return div;
+    }
+
+    // Set up MutationObserver to scroll as assistant message updates during streaming
+    const observer = new MutationObserver(() => scrollToBottom());
+    observer.observe(chat, { childList: true, subtree: true, characterData: true });
+
+    // Initial greeting
+    addMessage("assistant", "Hello! How can I help you today?");
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      if (isStreaming) return;
+      const prompt = userInput.value.trim();
+      if (!prompt) return;
+      addMessage("user", prompt);
+      userInput.value = "";
+      sendBtn.disabled = true;
+      isStreaming = true;
+      const assistantDiv = addMessage("assistant", "");
+
+      try {
+        const response = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+        });
+        if (!response.body) {
+          assistantDiv.textContent = "[No response body]";
+        } else {
+          const reader = response.body.getReader();
+          let result = "";
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            result += new TextDecoder().decode(value);
+            assistantDiv.textContent = result;
+            // No need to call scrollToBottom() here, MutationObserver does it!
+          }
+        }
+      } catch (err) {
+        assistantDiv.textContent = "[Network error]";
+      }
+      sendBtn.disabled = false;
+      isStreaming = false;
+    };
+  </script>
+</body>
+</html>
