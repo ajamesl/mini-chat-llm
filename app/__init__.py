@@ -1,1 +1,1 @@
-"""App package for mini-chat-llm."""
+"""App package for MiniChat."""

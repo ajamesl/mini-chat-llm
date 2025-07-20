@@ -1,20 +1,49 @@
-"""Main FastAPI application for the mini-chat-llm service."""
+"""Main FastAPI application for the MiniChat service."""
 import os
 from typing import Generator
 
-from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import StreamingResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from app.inference import generate_stream
 
 app = FastAPI()
 
+# Set up paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(BASE_DIR)
+
+# Mount static files from the root static directory
+app.mount("/static", StaticFiles(directory=os.path.join(PROJECT_ROOT, "static")), name="static")
+
+# Set up templates
+templates = Jinja2Templates(directory=os.path.join(PROJECT_ROOT, "templates"))
+
 
 class ChatRequest(BaseModel):
     """Request model for chat endpoint containing the user prompt."""
     prompt: str
+
+
+@app.get("/", response_class=HTMLResponse)
+def read_root(request: Request):
+    """Serve the main chat interface."""
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/test-static")
+def test_static():
+    """Test endpoint to verify static files are being served."""
+    import os
+    static_path = os.path.join(PROJECT_ROOT, "static", "speech_bubble.png")
+    return {
+        "static_path": static_path,
+        "file_exists": os.path.exists(static_path),
+        "file_size": os.path.getsize(static_path) if os.path.exists(static_path) else None
+    }
 
 
 @app.post("/chat")
@@ -33,10 +62,3 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
             yield token
 
     return StreamingResponse(token_streamer(), media_type="text/plain")
-
-
-app.mount(
-    "/",
-    StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static"), html=True),
-    name="static",
-)

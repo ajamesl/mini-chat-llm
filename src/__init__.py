@@ -1,5 +1,5 @@
 """
-mini-chat-llm: Core package for model configuration, loading, and utilities.
+MiniChat: Core package for model configuration, loading, and utilities.
 """
 
 from . import config, model, utils
